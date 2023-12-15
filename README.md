@@ -1,6 +1,6 @@
 # AzureInfraConcepts
 
-<table style="width: 100%; display: table;">
+<table style="width: 100% !important; display: table !important;">
     <thead>
         <tr>
             <th style="background: beige; width: '50%'">Code examples <br /><br /><a href="https://github.com/DominikWojciechowski/AzureInfraConcepts">GitHub Code</a></th>
