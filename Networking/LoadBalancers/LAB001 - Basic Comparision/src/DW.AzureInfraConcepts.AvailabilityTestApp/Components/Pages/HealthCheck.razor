@@ -1,0 +1,122 @@
+﻿@page "/"
+@page "/HealthCheck"
+
+@rendermode InteractiveServer
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager NavigationManager
+@inject IAppHealthCheckService AppHealthCheckService
+@inject IOptions<ApplicationOptions> ApplicationOptions
+
+@using DW.AzureInfraConcepts.AvailabilityTestApp.Components.Health
+@using DW.AzureInfraConcepts.AvailabilityTestApp.Components.Settings
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.Extensions.Options
+
+<PageTitle>Health Check</PageTitle>
+
+<h1>Health Check</h1>
+<i>For instance: @(ApplicationOptions?.Value?.AppName ?? "UNKNOWN")</i>
+
+<hr />
+
+<p>1. Set the percentage of failures</p>
+<input type="range" min="0" max="100" step="1" value="@failurePercent" @oninput="@((args) => SetFailurePercentage(args.Value.ToString()))" />
+<em>@failurePercent % of requests will fail</em>
+
+<hr />
+
+<p>2. Test health check results</p>
+<button class="btn btn-primary" @onclick="CheckAppHealth">Check health</button>
+ OR make a call to <b>GET /_health</b>
+
+<hr />
+
+<p>3. See the results. You can refresh the page to see the requests history from other clients</p>
+@if (healthChecksHistory == null)
+{
+    <p><em>Loading history ...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Source</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var forecast in healthChecksHistory)
+            {
+                <tr>
+                    <td>@forecast.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.ffff")</td>
+                    <td>@forecast.Status</td>
+                    <td>@forecast.Source</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private HealthHistoryModel[]? healthChecksHistory;
+    private int failurePercent { get; set; } = 0;
+    private HubConnection? hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    { 
+        failurePercent = AppHealthCheckService.AppHealthConfiguration.FailurePercentage;
+        RefreshHealtHistoryTable();
+        InitNotificationsHub();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if(hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+
+    private async Task InitNotificationsHub()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/_notifications"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        hubConnection.On<string>("GlobalMessage", message =>
+        {
+            RefreshHealtHistoryTable();
+            InvokeAsync(StateHasChanged);
+        });
+
+        await hubConnection.StartAsync();
+    }
+
+    private void RefreshHealtHistoryTable()
+    {
+        healthChecksHistory = AppHealthCheckService.HealthCheckHistory
+            .TakeLast(100)
+            .Reverse()
+            .ToArray();
+    }
+
+    private void CheckAppHealth()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, NavigationManager.BaseUri + "_health");
+        var client = ClientFactory.CreateClient();
+        var response = client.Send(request);
+    }
+
+    private void SetFailurePercentage(string value)
+    {
+        if (int.TryParse(value, out int result))
+        {
+            if (result < 0 || result > 100) return;
+            AppHealthCheckService.AppHealthConfiguration.FailurePercentage = result;
+            failurePercent = result;
+        }
+    }
+}
