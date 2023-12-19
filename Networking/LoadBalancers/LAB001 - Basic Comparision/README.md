@@ -4,7 +4,7 @@ This LAB provides scripts to deploy sample services and all types of load balanc
 
 The architecture of target solution includes:
 
-![Architecture](.attachments\img_001_architecture.png)
+![Architecture](.attachments/img_001_architecture.png)
 
 1. 4 Virtual Machines - 2 per region (West Europe and East US)
 2. 2 App Services - in West Europe region
@@ -36,6 +36,6 @@ The architecture of target solution includes:
    - TEST002 - Latency.js - Load test to measure latency using K6 tool
 4. To play with availability of the service you can open test application of specyfic VM (via public IP or exposed by Load Balancer) and change percent of failures. On the same page you can monitor history of requests from clients and health checks
 
-    ![TestApp](.attachments\img_002_testApp.png)
+    ![TestApp](.attachments/img_002_testApp.png)
 
 5. When you completed your testing, you can remove resource group with all resources by executing '.\Deploy.ps1 -Cleanup' script
